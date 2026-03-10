@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>مؤخرة افنان</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f5dc; overflow: hidden; font-family: 'Arial', 'Tahoma', sans-serif; touch-action: none; }
+        #gameCanvas { display: block; }
+        #ui { position: absolute; top: 0; right: 0; left: 0; pointer-events: none; z-index: 5; }
+        .top-bar { display: flex; justify-content: space-between; padding: 15px 20px; background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, transparent 100%); flex-direction: row-reverse; }
+        .player-badge { display: flex; align-items: center; gap: 12px; flex-direction: row-reverse; }
+        .avatar { width: 50px; height: 50px; background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%); border-radius: 12px; border: 3px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .player-info h2 { color: #2d3436; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; }
+        .player-info p { color: #fd79a8; font-size: 12px; font-weight: bold; }
+        .stats-bar { display: flex; gap: 15px; flex-direction: row-reverse; }
+        .stat-pill { background: #fff; border: 2px solid #55efc4; border-radius: 20px; padding: 8px 20px; color: #2d3436; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .stat-pill span { color: #e84393; font-weight: bold; font-size: 18px; }
+        .growth-hud { position: absolute; top: 80px; left: 20px; right: auto; width: 200px; background: #fff; border: 3px solid #fdcb6e; border-radius: 15px; padding: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .growth-header { display: flex; justify-content: space-between; font-size: 12px; color: #fdcb6e; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }
+        .growth-bar-bg { height: 10px; background: #dfe6e9; border-radius: 5px; overflow: hidden; }
+        .growth-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #fd79a8, #fdcb6e, #55efc4); border-radius: 5px; transition: width 0.3s; }
+        .ass-readout { margin-top: 10px; text-align: left; font-size: 14px; color: #fd79a8; font-weight: bold; }
+        .level-indicator { position: absolute; top: 200px; left: 20px; background: #fff; border: 3px solid #74b9ff; border-radius: 15px; padding: 10px 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); text-align: center; }
+        .level-name { font-size: 16px; color: #e84393; font-weight: bold; margin-bottom: 5px; }
+        .level-target { font-size: 12px; color: #636e72; }
+        #minimap { position: absolute; top: 80px; right: 20px; left: auto; width: 150px; height: 150px; background: #fff; border: 3px solid #55efc4; border-radius: 50%; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        #minimap-canvas { width: 100%; height: 100%; }
+        #joystick-zone { position: absolute; bottom: 50px; right: 50px; left: auto; width: 150px; height: 150px; pointer-events: auto; }
+        .joystick-base { position: absolute; width: 120px; height: 120px; background: rgba(255,255,255,0.8); border: 3px solid #fd79a8; border-radius: 50%; top: 15px; right: 15px; left: auto; box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        .joystick-knob { position: absolute; width: 60px; height: 60px; background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%); border-radius: 50%; top: 45px; right: 45px; left: auto; box-shadow: 0 5px 15px rgba(0,0,0,0.2); border: 3px solid #fff; transition: transform 0.1s; }
+        .screen { position: absolute; top: 0; right: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 50%, #fd79a8 100%); z-index: 20; color: #2d3436; }
+        .hidden { display: none !important; }
+        .game-logo { font-size: 42px; font-weight: bold; color: #fff; text-shadow: 3px 3px 0 #fd79a8; margin-bottom: 10px; }
+        .game-logo span { color: #fff; }
+        .game-subtitle { color: #fff; font-size: 18px; margin-bottom: 20px; text-align: center; padding: 0 20px; }
+        .start-message { background: rgba(255,255,255,0.9); border: 3px solid #fd79a8; border-radius: 15px; padding: 20px 30px; margin-bottom: 30px; text-align: center; max-width: 80%; }
+        .start-message h3 { color: #e84393; font-size: 22px; margin-bottom: 10px; }
+        .start-message p { color: #2d3436; font-size: 16px; }
+        .snack-preview { display: flex; gap: 10px; margin-bottom: 30px; font-size: 35px; }
+        .play-btn { background: linear-gradient(135deg, #55efc4 0%, #00b894 100%); border: none; border-radius: 30px; padding: 20px 80px; color: #fff; font-size: 24px; font-weight: bold; text-transform: uppercase; cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .play-btn:active { transform: scale(0.98); }
+        .result-card { background: #fff; border: 4px solid #fd79a8; border-radius: 20px; padding: 40px; margin-bottom: 30px; min-width: 300px; text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.15); }
+        .result-grade { font-size: 64px; font-weight: bold; color: #fdcb6e; margin-bottom: 10px; }
+        .result-title { font-size: 24px; color: #2d3436; margin-bottom: 30px; }
+        .result-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .result-stat { background: #ffeaa7; padding: 20px; border-radius: 15px; }
+        .result-stat-value { font-size: 28px; font-weight: bold; color: #e84393; }
+        .result-stat-label { font-size: 12px; color: #636e72; text-transform: uppercase; }
+        .btn-group { display: flex; gap: 15px; }
+        .play-btn.secondary { background: #fff; border: 3px solid #fd79a8; color: #fd79a8; }
+        .level-complete { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255,255,255,0.95); border: 4px solid #55efc4; border-radius: 20px; padding: 30px 50px; text-align: center; z-index: 100; display: none; box-shadow: 0 15px 40px rgba(0,0,0,0.3); }
+        .level-complete.show { display: block; animation: popIn 0.5s ease; }
+        @keyframes popIn { 0% { transform: translate(-50%, -50%) scale(0); } 80% { transform: translate(-50%, -50%) scale(1.1); } 100% { transform: translate(-50%, -50%) scale(1); } }
+        .level-complete h2 { color: #55efc4; font-size: 32px; margin-bottom: 10px; }
+        .level-complete .level-name-big { color: #e84393; font-size: 28px; font-weight: bold; margin-bottom: 15px; }
+        .level-complete p { color: #2d3436; font-size: 18px; margin-bottom: 20px; }
+        .level-complete button { background: linear-gradient(135deg, #55efc4 0%, #00b894 100%); border: none; border-radius: 25px; padding: 15px 40px; color: #fff; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .final-message { font-size: 28px; color: #e84393; font-weight: bold; text-align: center; line-height: 1.6; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui">
+        <div class="top-bar">
+            <div class="player-badge">
+                <div class="avatar">🍑</div>
+                <div class="player-info">
+                    <h2>افنان</h2>
+                    <p>مستكشف مرح</p>
+                </div>
+            </div>
+            <div class="stats-bar">
+                <div class="stat-pill"><span id="snackCount">0</span> :الوجبات</div>
+                <div class="stat-pill"><span id="scoreDisplay">0</span> :النقاط</div>
+            </div>
+        </div>
+        <div class="growth-hud">
+            <div class="growth-header">
+                <span id="growthPercent">0%</span>
+                <span>النمو</span>
+            </div>
+            <div class="growth-bar-bg">
+                <div class="growth-bar-fill" id="growthFill"></div>
+            </div>
+            <div class="ass-readout">
+                سم <span id="assSize">32</span>
+            </div>
+        </div>
+        <div class="level-indicator">
+            <div class="level-name" id="levelName">حقروصين</div>
+            <div class="level-target">الهدف: <span id="targetSize">200</span> سم</div>
+        </div>
+        <div id="minimap">
+            <canvas id="minimap-canvas"></canvas>
+        </div>
+    </div>
+    <div id="joystick-zone">
+        <div class="joystick-base"></div>
+        <div class="joystick-knob" id="joystickKnob"></div>
+    </div>
+    <div id="startScreen" class="screen">
+        <div class="game-logo"><span>مؤخرة</span> افنان</div>
+        <div class="start-message">
+            <h3>🎯 الهدف</h3>
+            <p>ساعدي افنان لتكبير مؤخرتها!</p>
+        </div>
+        <div class="snack-preview">🍩🍪🧁🍰🥞🍕🍔</div>
+        <button class="play-btn" onclick="startGame()">ابدأ اللعب</button>
+    </div>
+    <div id="resultScreen" class="screen hidden">
+        <div class="result-card">
+            <div class="result-grade" id="resultRank">S</div>
+            <div class="result-title" id="resultTitle">!رائع</div>
+            <div class="result-stats">
+                <div class="result-stat">
+                    <div class="result-stat-label">سم مؤخرة</div>
+                    <div class="result-stat-value" id="finalAss">0</div>
+                </div>
+                <div class="result-stat">
+                    <div class="result-stat-label">الوجبات</div>
+                    <div class="result-stat-value" id="finalSnacks">0</div>
+                </div>
+                <div class="result-stat">
+                    <div class="result-stat-label">النقاط</div>
+                    <div class="result-stat-value" id="finalScore">0</div>
+                </div>
+            </div>
+        </div>
+        <div class="btn-group">
+            <button class="play-btn" onclick="restartGame()">مرة أخرى</button>
+            <button class="play-btn secondary" onclick="showStart()">القائمة</button>
+        </div>
+    </div>
+    <div id="levelComplete" class="level-complete">
+        <h2>🎉 مبروك!</h2>
+        <div class="level-name-big" id="completedLevelName">حقروصين</div>
+        <p id="levelMessage">أكملت المستوى!</p>
+        <button onclick="nextLevel()">المستوى التالي</button>
+    </div>
+    <div id="finalComplete" class="level-complete">
+        <h2>🎊 تهانينا! 🎊</h2>
+        <div class="final-message">شكرا لك<br>لقد ساعدت أفنان لجعل مكوتها أكبر!</div>
+        <div class="result-stats" style="margin-bottom: 20px;">
+            <div class="result-stat">
+                <div class="result-stat-label">المستويات المكتملة</div>
+                <div class="result-stat-value">3/3</div>
+            </div>
+            <div class="result-stat">
+                <div class="result-stat-label">إجمالي الوجبات</div>
+                <div class="result-stat-value" id="totalSnacks">0</div>
+            </div>
+            <div class="result-stat">
+                <div class="result-stat-label">النقاط النهائية</div>
+                <div class="result-stat-value" id="totalScore">0</div>
+            </div>
+        </div>
+        <button onclick="restartGame()">العب مرة أخرى</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const minimapCanvas = document.getElementById('minimap-canvas');
+        const minimapCtx = minimapCanvas.getContext('2d');
+
+        const SNACK_EMOJIS = ['🍩', '🍪', '🧁', '🍰', '🥞', '🍕', '🍔', '🌭', '🍟', '🍿', '🍦', '🍮'];
+        
+        const LEVELS = [
+            { name: 'حقروصين', target: 200, snacks: 50, theme: 'farm' },
+            { name: 'شعيب اديرع', target: 400, snacks: 70, theme: 'river' },
+            { name: 'المضيح', target: 600, snacks: 100, theme: 'desert' }
+        ];
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            minimapCanvas.width = 150;
+            minimapCanvas.height = 150;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const COLORS = {
+            bg: '#f5f5dc',
+            pink: '#fd79a8',
+            pinkDark: '#e84393',
+            yellow: '#fdcb6e',
+            blue: '#74b9ff',
+            purple: '#a29bfe',
+            mint: '#55efc4',
+            white: '#fff',
+            dark: '#2d3436',
+            farm: { ground: '#7cb342', grass: '#8bc34a', darkGrass: '#689f38', water: '#4fc3f7', road: '#8d6e63' },
+            river: { ground: '#81c784', water: '#29b6f6', waterDark: '#0288d1', road: '#5d4037', car: '#37474f' },
+            desert: { ground: '#d7ccc8', sand: '#efebe9', sandDark: '#a1887f', rock: '#8d6e63', cactus: '#2e7d32' }
+        };
+
+        const CAMERA = { x: 0, y: 0, zoom: 1, followSpeed: 0.1 };
+        const WORLD = { width: 3000, height: 3000 };
+
+        let gameState = 'start';
+        let score = 0;
+        let snacksCollected = 0;
+        let currentLevel = 0;
+        let levelCompleted = false;
+        let totalSnacksAllLevels = 0;
+        let totalScoreAllLevels = 0;
+        
+        let afnan = { x: WORLD.width/2, y: WORLD.height/2, vx: 0, vy: 0, speed: 5, sprintSpeed: 8, isSprinting: false, bodyW: 30, bodyH: 50, bodyD: 20, headSize: 25, legLength: 40, legW: 10, legL: { angle: 0 }, legR: { angle: 0 }, assW: 35, assH: 30, assD: 25, targetAssW: 35, targetAssH: 30, targetAssD: 25, walkCycle: 0, facing: 0, stuck: false, stuckTime: 0, wiggle: 0, shadowScale: 1 };
+        
+        let joystick = { active: false, centerX: 0, centerY: 0, dx: 0, dy: 0, maxDist: 50 };
+        let snacks = [];
+        let tightSpaces = [];
+        let particles = [];
+        let trees = [];
+        let birds = [];
+        let cars = [];
+        let lizards = [];
+        let riverPoly = [];
+        let mountains = [];
+        let sheeps = [];
+        let chickens = [];
+
+        const joystickZone = document.getElementById('joystick-zone');
+        const joystickKnob = document.getElementById('joystickKnob');
+
+        function setupJoystick() {
+            const getPos = (e) => {
+                if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                return { x: e.clientX, y: e.clientY };
+            };
+            const start = (e) => {
+                e.preventDefault();
+                const pos = getPos(e);
+                const rect = joystickZone.getBoundingClientRect();
+                joystick.centerX = rect.right - rect.width/2;
+                joystick.centerY = rect.top + rect.height/2;
+                joystick.active = true;
+                updateJoystick(pos.x, pos.y);
+            };
+            const move = (e) => {
+                if (!joystick.active) return;
+                e.preventDefault();
+                const pos = getPos(e);
+                updateJoystick(pos.x, pos.y);
+            };
+            const end = (e) => {
+                e.preventDefault();
+                joystick.active = false;
+                joystick.dx = 0;
+                joystick.dy = 0;
+                joystickKnob.style.transform = `translate(0px, 0px)`;
+            };
+            const updateJoystick = (x, y) => {
+                let dx = joystick.centerX - x;
+                let dy = y - joystick.centerY;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist > joystick.maxDist) {
+                    dx = (dx/dist) * joystick.maxDist;
+                    dy = (dy/dist) * joystick.maxDist;
+                }
+                joystick.dx = -dx / joystick.maxDist;
+                joystick.dy = dy / joystick.maxDist;
+                joystickKnob.style.transform = `translate(${-dx}px, ${dy}px)`;
+            };
+            joystickZone.addEventListener('touchstart', start);
+            joystickZone.addEventListener('touchmove', move);
+            joystickZone.addEventListener('touchend', end);
+            joystickZone.addEventListener('mousedown', start);
+            window.addEventListener('mousemove', move);
+            window.addEventListener('mouseup', end);
+        }
+        setupJoystick();
+
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        function playSound(freq, dur, type = 'sine') {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+            osc.start();
+            osc.stop(audioCtx.currentTime + dur);
+        }
+        function playLevelUpSound() {
+            if (!audioCtx) return;
+            [523, 659, 784, 1047].forEach((freq, i) => {
+                setTimeout(() => playSound(freq, 0.3), i * 150);
+            });
+        }
+
+        function resetAfnanSize() {
+            afnan.assW = 35;
+            afnan.assH = 30;
+            afnan.assD = 25;
+            afnan.targetAssW = 35;
+            afnan.targetAssH = 30;
+            afnan.targetAssD = 25;
+            afnan.shadowScale = 1;
+        }
+
+        function createBird(x, y) {
+            return { x: x, y: y, vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 0.5, wingPhase: Math.random() * Math.PI * 2, color: ['#ff7043', '#5c6bc0', '#66bb6a', '#ffa726'][Math.floor(Math.random() * 4)] };
+        }
+
+        function createSheep(x, y) {
+            return { 
+                x: x, 
+                y: y, 
+                vx: (Math.random() - 0.5) * 1.5, 
+                vy: (Math.random() - 0.5) * 1.5, 
+                angle: Math.random() * Math.PI * 2,
+                moveTimer: 0,
+                grazeTimer: 0,
+                isGrazing: false,
+                legPhase: 0,
+                color: '#eceff1',
+                faceColor: '#37474f'
+            };
+        }
+
+        function createChicken(x, y) {
+            return { 
+                x: x, 
+                y: y, 
+                vx: (Math.random() - 0.5) * 2.5, 
+                vy: (Math.random() - 0.5) * 2.5, 
+                angle: Math.random() * Math.PI * 2,
+                moveTimer: 0,
+                peckTimer: 0,
+                isPecking: false,
+                color: '#fff',
+                combColor: '#e53935',
+                beakColor: '#ff9800'
+            };
+        }
+
+        function createCar(x, y, angle) {
+            const colors = ['#e53935', '#1e88e5', '#43a047', '#fdd835', '#8e24aa', '#6d4c41'];
+            return { x: x, y: y, angle: angle, color: colors[Math.floor(Math.random() * colors.length)], width: 60, height: 30 };
+        }
+
+        function createLizard(x, y) {
+            return { x: x, y: y, vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3, angle: Math.random() * Math.PI * 2, moveTimer: 0, color: '#d84315' };
+        }
+
+        function createMountain(x, y, scale) {
+            return { x: x, y: y, scale: scale, height: 100 + Math.random() * 150, color: ['#8d6e63', '#a1887f', '#795548'][Math.floor(Math.random() * 3)] };
+        }
+
+        function createTree(x, y, scale = 1) {
+            return { x: x, y: y, scale: scale, type: 'tree', width: 40 * scale, height: 60 * scale };
+        }
+
+        function drawTree(tree) {
+            const x = tree.x; const y = tree.y; const s = tree.scale;
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.beginPath();
+            ctx.ellipse(x, y + 5, 25 * s, 8 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#8d6e63';
+            ctx.fillRect(x - 6 * s, y - 30 * s, 12 * s, 35 * s);
+            ctx.fillStyle = '#6d4c41';
+            ctx.fillRect(x - 6 * s, y - 30 * s, 3 * s, 35 * s);
+            ctx.fillStyle = '#66bb6a';
+            ctx.beginPath();
+            ctx.arc(x, y - 35 * s, 25 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#81c784';
+            ctx.beginPath();
+            ctx.arc(x - 8 * s, y - 45 * s, 18 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#66bb6a';
+            ctx.beginPath();
+            ctx.arc(x + 5 * s, y - 50 * s, 15 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.beginPath();
+            ctx.arc(x - 10 * s, y - 50 * s, 8 * s, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawBird(bird) {
+            const wingY = Math.sin(bird.wingPhase) * 5;
+            ctx.strokeStyle = bird.color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(bird.x - 10, bird.y + wingY);
+            ctx.quadraticCurveTo(bird.x, bird.y - 5, bird.x + 10, bird.y + wingY);
+            ctx.stroke();
+        }
+
+        function drawSheep(sheep) {
+            const x = sheep.x;
+            const y = sheep.y;
+            const legOffset = Math.sin(sheep.legPhase) * 3;
+            
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.beginPath();
+            ctx.ellipse(x, y + 12, 25, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Legs
+            ctx.fillStyle = '#37474f';
+            ctx.fillRect(x - 18, y + 5 + legOffset, 6, 15);
+            ctx.fillRect(x - 8, y + 5 - legOffset, 6, 15);
+            ctx.fillRect(x + 2, y + 5 + legOffset, 6, 15);
+            ctx.fillRect(x + 12, y + 5 - legOffset, 6, 15);
+            
+            // Body (fluffy cloud shape)
+            ctx.fillStyle = sheep.color;
+            ctx.beginPath();
+            ctx.arc(x, y, 22, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x - 15, y - 5, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x + 15, y - 5, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x - 10, y + 8, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x + 10, y + 8, 12, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Face
+            ctx.fillStyle = sheep.faceColor;
+            ctx.beginPath();
+            ctx.ellipse(x - 20, y - 5, 12, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyes
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(x - 24, y - 8, 3, 0, Math.PI * 2);
+            ctx.arc(x - 16, y - 8, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(x - 24, y - 8, 1.5, 0, Math.PI * 2);
+            ctx.arc(x - 16, y - 8, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawChicken(chicken) {
+            const x = chicken.x;
+            const y = chicken.y;
+            
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.beginPath();
+            ctx.ellipse(x, y + 8, 12, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Legs
+            ctx.strokeStyle = '#ff9800';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(x - 5, y + 5);
+            ctx.lineTo(x - 5, y + 12);
+            ctx.moveTo(x + 5, y + 5);
+            ctx.lineTo(x + 5, y + 12);
+            ctx.stroke();
+            
+            // Body
+            ctx.fillStyle = chicken.color;
+            ctx.beginPath();
+            ctx.ellipse(x, y, 15, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Wing
+            ctx.fillStyle = '#f5f5f5';
+            ctx.beginPath();
+            ctx.ellipse(x + 5, y + 2, 8, 6, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Head
+            ctx.fillStyle = chicken.color;
+            ctx.beginPath();
+            ctx.arc(x - 12, y - 8, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Comb (red top)
+            ctx.fillStyle = chicken.combColor;
+            ctx.beginPath();
+            ctx.ellipse(x - 12, y - 16, 4, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Beak
+            ctx.fillStyle = chicken.beakColor;
+            ctx.beginPath();
+            ctx.moveTo(x - 20, y - 8);
+            ctx.lineTo(x - 24, y - 5);
+            ctx.lineTo(x - 20, y - 2);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Eye
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(x - 14, y - 10, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(x - 13, y - 11, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Tail feathers
+            ctx.fillStyle = '#f5f5f5';
+            ctx.beginPath();
+            ctx.ellipse(x + 12, y - 5, 6, 4, -0.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawCar(car) {
+            ctx.save();
+            ctx.translate(car.x, car.y);
+            ctx.rotate(car.angle);
+            ctx.fillStyle = car.color;
+            ctx.fillRect(-car.width/2, -car.height/2, car.width, car.height);
+            ctx.fillStyle = '#37474f';
+            ctx.fillRect(-car.width/2 + 5, -car.height/2 - 3, 12, 6);
+            ctx.fillRect(car.width/2 - 17, -car.height/2 - 3, 12, 6);
+            ctx.fillRect(-car.width/2 + 5, car.height/2 - 3, 12, 6);
+            ctx.fillRect(car.width/2 - 17, car.height/2 - 3, 12, 6);
+            ctx.fillStyle = '#b0bec5';
+            ctx.fillRect(-car.width/2 + 8, -car.height/2 + 5, car.width - 16, car.height - 10);
+            ctx.restore();
+        }
+
+        function drawLizard(lizard) {
+            ctx.save();
+            ctx.translate(lizard.x, lizard.y);
+            ctx.rotate(lizard.angle);
+            ctx.fillStyle = lizard.color;
+            ctx.fillRect(-15, -5, 30, 10);
+            ctx.fillRect(-20, -3, 8, 6);
+            ctx.fillStyle = '#bf360c';
+            ctx.beginPath();
+            ctx.arc(12, 0, 4, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(14, -1, 1.5, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = lizard.color;
+            for(let i=0; i<4; i++) {
+                ctx.fillRect(-5 + i*8, -8, 3, 6);
+                ctx.fillRect(-5 + i*8, 2, 3, 6);
+            }
+            ctx.restore();
+        }
+
+        function drawMountain(mtn) {
+            const grad = ctx.createLinearGradient(mtn.x, mtn.y - mtn.height, mtn.x, mtn.y);
+            grad.addColorStop(0, '#d7ccc8');
+            grad.addColorStop(0.5, mtn.color);
+            grad.addColorStop(1, '#5d4037');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(mtn.x - 80 * mtn.scale, mtn.y);
+            ctx.lineTo(mtn.x, mtn.y - mtn.height * mtn.scale);
+            ctx.lineTo(mtn.x + 80 * mtn.scale, mtn.y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.beginPath();
+            ctx.moveTo(mtn.x - 25 * mtn.scale, mtn.y - mtn.height * 0.6 * mtn.scale);
+            ctx.lineTo(mtn.x, mtn.y - mtn.height * 0.85 * mtn.scale);
+            ctx.lineTo(mtn.x + 25 * mtn.scale, mtn.y - mtn.height * 0.6 * mtn.scale);
+            ctx.lineTo(mtn.x, mtn.y - mtn.height * 0.5 * mtn.scale);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function createWorld() {
+            snacks = [];
+            tightSpaces = [];
+            particles = [];
+            trees = [];
+            birds = [];
+            cars = [];
+            lizards = [];
+            riverPoly = [];
+            mountains = [];
+            sheeps = [];
+            chickens = [];
+            
+            afnan.x = WORLD.width/2;
+            afnan.y = WORLD.height/2;
+            afnan.vx = 0;
+            afnan.vy = 0;
+            afnan.stuck = false;
+            levelCompleted = false;
+
+            resetAfnanSize();
+
+            const levelConfig = LEVELS[currentLevel];
+            const theme = levelConfig.theme;
+
+            if (theme === 'farm') {
+                for (let i = 0; i < 80; i++) {
+                    const x = Math.random() * WORLD.width;
+                    const y = Math.random() * WORLD.height;
+                    const distFromCenter = Math.sqrt((x - WORLD.width/2)**2 + (y - WORLD.height/2)**2);
+                    if (distFromCenter > 200) trees.push(createTree(x, y, 0.7 + Math.random() * 0.6));
+                }
+                for (let i = 0; i < 25; i++) {
+                    birds.push(createBird(Math.random() * WORLD.width, 50 + Math.random() * 400));
+                }
+                for (let i = 0; i < 15; i++) {
+                    let x = Math.random() * WORLD.width;
+                    let y = Math.random() * WORLD.height;
+                    const distFromCenter = Math.sqrt((x - WORLD.width/2)**2 + (y - WORLD.height/2)**2);
+                    if (distFromCenter > 250) sheeps.push(createSheep(x, y));
+                }
+                for (let i = 0; i < 20; i++) {
+                    let x = Math.random() * WORLD.width;
+                    let y = Math.random() * WORLD.height;
+                    const distFromCenter = Math.sqrt((x - WORLD.width/2)**2 + (y - WORLD.height/2)**2);
+                    if (distFromCenter > 250) chickens.push(createChicken(x, y));
+                }
+            } else if (theme === 'river') {
+                const riverWidth = 200;
+                const riverY = WORLD.height / 2;
+                riverPoly = [
+                    {x: 0, y: riverY - riverWidth/2},
+                    {x: WORLD.width, y: riverY - riverWidth/2 + 100},
+                    {x: WORLD.width, y: riverY + riverWidth/2 + 100},
+                    {x: 0, y: riverY + riverWidth/2}
+                ];
+                for (let i = 0; i < 50; i++) {
+                    const x = Math.random() * WORLD.width;
+                    const y = Math.random() * WORLD.height;
+                    if (y < riverY - riverWidth/2 - 50 || y > riverY + riverWidth/2 + 50) {
+                        if (Math.sqrt((x - WORLD.width/2)**2 + (y - WORLD.height/2)**2) > 200)
+                            trees.push(createTree(x, y, 0.6 + Math.random() * 0.4));
+                    }
+                }
+                for (let i = 0; i < 8; i++) {
+                    const side = Math.random() > 0.5 ? 1 : -1;
+                    const x = 200 + Math.random() * (WORLD.width - 400);
+                    const y = riverY + side * (riverWidth/2 + 40 + Math.random() * 100);
+                    cars.push(createCar(x, y, side === 1 ? 0 : Math.PI));
+                }
+            } else if (theme === 'desert') {
+                for (let i = 0; i < 12; i++) {
+                    const x = Math.random() * WORLD.width;
+                    const y = Math.random() * WORLD.height;
+                    mountains.push(createMountain(x, y, 0.8 + Math.random() * 0.4));
+                }
+                for (let i = 0; i < 20; i++) {
+                    const x = Math.random() * WORLD.width;
+                    const y = Math.random() * WORLD.height;
+                    if (Math.sqrt((x - WORLD.width/2)**2 + (y - WORLD.height/2)**2) > 200)
+                        trees.push({x: x, y: y, scale: 0.5 + Math.random() * 0.3, type: 'cactus'});
+                }
+                for (let i = 0; i < 10; i++) {
+                    lizards.push(createLizard(Math.random() * WORLD.width, Math.random() * WORLD.height));
+                }
+            }
+
+            for (let i = 0; i < levelConfig.snacks; i++) {
+                let x = Math.random() * WORLD.width;
+                let y = Math.random() * WORLD.height;
+                if (theme === 'river') {
+                    const riverY = WORLD.height / 2;
+                    const riverWidth = 200;
+                    while (y > riverY - riverWidth/2 && y < riverY + riverWidth/2 + 100) {
+                        y = Math.random() * WORLD.height;
+                    }
+                }
+                const emojiIndex = Math.floor(Math.random() * SNACK_EMOJIS.length);
+                snacks.push({ x: x, y: y, emoji: SNACK_EMOJIS[emojiIndex], active: true, float: Math.random() * Math.PI * 2, scale: 0.8 + Math.random() * 0.4, rotation: (Math.random() - 0.5) * 0.3 });
+            }
+
+            if (theme === 'farm') {
+                for (let i = 0; i < 8; i++) {
+                    tightSpaces.push({ x: Math.random() * WORLD.width, y: Math.random() * WORLD.height, w: 40 + Math.random() * 30, h: 40 + Math.random() * 30 });
+                }
+            } else if (theme === 'river') {
+                for (let i = 0; i < 12; i++) {
+                    let x = Math.random() * WORLD.width;
+                    let y = Math.random() * WORLD.height;
+                    const riverY = WORLD.height / 2;
+                    const riverWidth = 200;
+                    if (y < riverY - riverWidth/2 - 50 || y > riverY + riverWidth/2 + 50)
+                        tightSpaces.push({ x: x, y: y, w: 35 + Math.random() * 25, h: 35 + Math.random() * 25 });
+                }
+            } else {
+                for (let i = 0; i < 15; i++) {
+                    tightSpaces.push({ x: Math.random() * WORLD.width, y: Math.random() * WORLD.height, w: 30 + Math.random() * 20, h: 30 + Math.random() * 20 });
+                }
+            }
+        }
+
+        function drawCactus(tree) {
+            const x = tree.x; const y = tree.y; const s = tree.scale;
+            ctx.fillStyle = '#2e7d32';
+            ctx.fillRect(x - 8*s, y - 60*s, 16*s, 60*s);
+            ctx.fillRect(x - 25*s, y - 40*s, 12*s, 30*s);
+            ctx.fillRect(x - 25*s, y - 50*s, 30*s, 10*s);
+            ctx.fillRect(x + 13*s, y - 35*s, 12*s, 25*s);
+            ctx.fillRect(x + 13*s, y - 45*s, 25*s, 10*s);
+            ctx.fillStyle = '#1b5e20';
+            ctx.fillRect(x - 6*s, y - 58*s, 4*s, 56*s);
+        }
+
+        function startGame() {
+            initAudio();
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.add('hidden');
+            document.getElementById('finalComplete').classList.remove('show');
+            gameState = 'playing';
+            score = 0;
+            snacksCollected = 0;
+            totalSnacksAllLevels = 0;
+            totalScoreAllLevels = 0;
+            currentLevel = 0;
+            updateLevelUI();
+            createWorld();
+            updateUI();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function nextLevel() {
+            document.getElementById('levelComplete').classList.remove('show');
+            currentLevel++;
+            if (currentLevel >= LEVELS.length) {
+                endGame(true);
+            } else {
+                levelCompleted = false;
+                updateLevelUI();
+                createWorld();
+                gameState = 'playing';
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function restartGame() {
+            startGame();
+        }
+
+        function showStart() {
+            document.getElementById('resultScreen').classList.add('hidden');
+            document.getElementById('startScreen').classList.remove('hidden');
+            gameState = 'start';
+        }
+
+        function updateLevelUI() {
+            const levelConfig = LEVELS[currentLevel];
+            document.getElementById('levelName').textContent = levelConfig.name;
+            document.getElementById('targetSize').textContent = levelConfig.target;
+        }
+
+        function updateUI() {
+            document.getElementById('snackCount').textContent = snacksCollected;
+            document.getElementById('scoreDisplay').textContent = score;
+            const levelConfig = LEVELS[currentLevel];
+            const target = levelConfig.target;
+            const growth = Math.min(100, (afnan.assW - 35) / (target - 35) * 100);
+            document.getElementById('growthFill').style.width = growth + '%';
+            document.getElementById('growthPercent').textContent = Math.floor(growth) + '%';
+            document.getElementById('assSize').textContent = Math.floor(afnan.assW);
+        }
+
+        function checkLevelComplete() {
+            const levelConfig = LEVELS[currentLevel];
+            if (afnan.assW >= levelConfig.target && !levelCompleted && gameState === 'playing') {
+                levelCompleted = true;
+                gameState = 'levelComplete';
+                playLevelUpSound();
+                document.getElementById('completedLevelName').textContent = levelConfig.name;
+                const levelMsg = document.getElementById('levelMessage');
+                if (currentLevel < LEVELS.length - 1) {
+                    const nextLevelName = LEVELS[currentLevel + 1].name;
+                    levelMsg.textContent = `تهانينا! المستوى التالي: ${nextLevelName}`;
+                } else {
+                    levelMsg.textContent = 'أكملت جميع المستويات! 🎉';
+                }
+                document.getElementById('levelComplete').classList.add('show');
+            }
+        }
+
+        function endGame(victory = false) {
+            gameState = 'result';
+            totalSnacksAllLevels += snacksCollected;
+            totalScoreAllLevels += score;
+            
+            // Show the final completion screen with custom message
+            document.getElementById('totalSnacks').textContent = totalSnacksAllLevels;
+            document.getElementById('totalScore').textContent = totalScoreAllLevels;
+            document.getElementById('finalComplete').classList.add('show');
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y;
+                this.vx = (Math.random() - 0.5) * 6;
+                this.vy = (Math.random() - 0.5) * 6;
+                this.color = color;
+                this.size = 4 + Math.random() * 4;
+                this.life = 1;
+                this.decay = 0.02;
+                this.rotation = Math.random() * Math.PI;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+                this.rotation += 0.1;
+                return this.life > 0;
+            }
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.fillStyle = this.color;
+                ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+                ctx.restore();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function update() {
+            if (gameState !== 'playing') return;
+            
+            if (joystick.active) {
+                const speed = afnan.isSprinting ? afnan.sprintSpeed : afnan.speed;
+                afnan.vx = joystick.dx * speed;
+                afnan.vy = joystick.dy * speed;
+                afnan.facing = Math.atan2(joystick.dy, joystick.dx);
+                const moveSpeed = Math.sqrt(afnan.vx**2 + afnan.vy**2);
+                if (moveSpeed > 0.5) afnan.walkCycle += moveSpeed * 0.15;
+            } else {
+                afnan.vx *= 0.8;
+                afnan.vy *= 0.8;
+            }
+
+            if (!afnan.stuck) {
+                afnan.x += afnan.vx;
+                afnan.y += afnan.vy;
+            }
+
+            afnan.x = Math.max(50, Math.min(WORLD.width - 50, afnan.x));
+            afnan.y = Math.max(50, Math.min(WORLD.height - 50, afnan.y));
+
+            afnan.assW += (afnan.targetAssW - afnan.assW) * 0.08;
+            afnan.assH += (afnan.targetAssH - afnan.assH) * 0.08;
+            afnan.assD += (afnan.targetAssD - afnan.assD) * 0.08;
+            afnan.shadowScale = 1 + (afnan.assW - 35) / 100;
+
+            CAMERA.x += (afnan.x - CAMERA.x) * CAMERA.followSpeed;
+            CAMERA.y += (afnan.y - CAMERA.y) * CAMERA.followSpeed;
+
+            const theme = LEVELS[currentLevel].theme;
+            if (theme === 'river') {
+                const riverY = WORLD.height / 2;
+                const riverWidth = 200;
+                if (afnan.y > riverY - riverWidth/2 && afnan.y < riverY + riverWidth/2 + 100) {
+                    afnan.y = afnan.vy > 0 ? riverY + riverWidth/2 + 100 : riverY - riverWidth/2;
+                    afnan.vy *= -0.5;
+                }
+            }
+
+            snacks.forEach(snack => {
+                if (!snack.active) return;
+                const dx = afnan.x - snack.x;
+                const dy = afnan.y - snack.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 120) {
+                    snack.x += dx * 0.05;
+                    snack.y += dy * 0.05;
+                }
+                if (dist < afnan.assW/2 + 30) {
+                    snack.active = false;
+                    snacksCollected++;
+                    afnan.targetAssW += 8;
+                    afnan.targetAssH += 5.6;
+                    afnan.targetAssD += 7.2;
+                    score += 100;
+                    playSound(440 + Math.random()*200, 0.1);
+                    for (let i = 0; i < 10; i++) particles.push(new Particle(snack.x, snack.y, COLORS.pink));
+                    updateUI();
+                    checkLevelComplete();
+                }
+                snack.float += 0.03;
+            });
+
+            tightSpaces.forEach(space => {
+                const inSpace = afnan.x > space.x && afnan.x < space.x + space.w && afnan.y > space.y && afnan.y < space.y + space.h;
+                if (inSpace && !afnan.stuck) {
+                    if (afnan.assW > space.w * 0.7 || afnan.assD > space.w * 0.7) {
+                        afnan.stuck = true;
+                        afnan.stuckTime = 0;
+                        playSound(150, 0.3, 'sawtooth');
+                    }
+                }
+            });
+
+            if (afnan.stuck) {
+                afnan.wiggle += 0.5;
+                afnan.stuckTime++;
+                if (afnan.stuckTime > 90 || (joystick.active && Math.random() > 0.7)) {
+                    afnan.stuck = false;
+                    afnan.x -= Math.cos(afnan.facing) * 40;
+                    afnan.y -= Math.sin(afnan.facing) * 40;
+                }
+            }
+
+            birds.forEach(bird => {
+                bird.x += bird.vx;
+                bird.y += bird.vy + Math.sin(Date.now() * 0.001) * 0.5;
+                bird.wingPhase += 0.2;
+                if (bird.x < 0) bird.x = WORLD.width;
+                if (bird.x > WORLD.width) bird.x = 0;
+                if (bird.y < 0) bird.y = WORLD.height;
+                if (bird.y > 500) bird.y = 0;
+            });
+
+            sheeps.forEach(sheep => {
+                sheep.moveTimer++;
+                sheep.grazeTimer++;
+                
+                if (sheep.isGrazing) {
+                    if (sheep.grazeTimer > 120) {
+                        sheep.isGrazing = false;
+                        sheep.grazeTimer = 0;
+                        sheep.vx = (Math.random() - 0.5) * 1.5;
+                        sheep.vy = (Math.random() - 0.5) * 1.5;
+                    }
+                } else {
+                    if (sheep.moveTimer > 60 + Math.random() * 60) {
+                        if (Math.random() > 0.3) {
+                            sheep.isGrazing = true;
+                            sheep.vx = 0;
+                            sheep.vy = 0;
+                        } else {
+                            sheep.vx = (Math.random() - 0.5) * 1.5;
+                            sheep.vy = (Math.random() - 0.5) * 1.5;
+                        }
+                        sheep.moveTimer = 0;
+                    }
+                }
+                
+                if (!sheep.isGrazing) {
+                    sheep.x += sheep.vx;
+                    sheep.y += sheep.vy;
+                    sheep.legPhase += 0.15;
+                }
+                
+                // Keep in bounds
+                if (sheep.x < 50) sheep.x = 50;
+                if (sheep.x > WORLD.width - 50) sheep.x = WORLD.width - 50;
+                if (sheep.y < 50) sheep.y = 50;
+                if (sheep.y > WORLD.height - 50) sheep.y = WORLD.height - 50;
+            });
+
+            chickens.forEach(chicken => {
+                chicken.moveTimer++;
+                chicken.peckTimer++;
+                
+                if (chicken.isPecking) {
+                    if (chicken.peckTimer > 40) {
+                        chicken.isPecking = false;
+                        chicken.peckTimer = 0;
+                    }
+                } else {
+                    if (chicken.moveTimer > 40 + Math.random() * 40) {
+                        if (Math.random() > 0.4) {
+                            chicken.isPecking = true;
+                            chicken.vx = 0;
+                            chicken.vy = 0;
+                        } else {
+                            chicken.vx = (Math.random() - 0.5) * 2.5;
+                            chicken.vy = (Math.random() - 0.5) * 2.5;
+                        }
+                        chicken.moveTimer = 0;
+                    }
+                }
+                
+                if (!chicken.isPecking) {
+                    chicken.x += chicken.vx;
+                    chicken.y += chicken.vy;
+                }
+                
+                // Keep in bounds
+                if (chicken.x < 30) chicken.x = 30;
+                if (chicken.x > WORLD.width - 30) chicken.x = WORLD.width - 30;
+                if (chicken.y < 30) chicken.y = 30;
+                if (chicken.y > WORLD.height - 30) chicken.y = WORLD.height - 30;
+            });
+
+            lizards.forEach(lizard => {
+                lizard.moveTimer++;
+                if (lizard.moveTimer > 60 + Math.random() * 60) {
+                    lizard.angle += (Math.random() - 0.5) * Math.PI;
+                    lizard.moveTimer = 0;
+                }
+                lizard.x += Math.cos(lizard.angle) * Math.abs(lizard.vx);
+                lizard.y += Math.sin(lizard.angle) * Math.abs(lizard.vy);
+                if (lizard.x < 0) lizard.x = WORLD.width;
+                if (lizard.x > WORLD.width) lizard.x = 0;
+                if (lizard.y < 0) lizard.y = WORLD.height;
+                if (lizard.y > WORLD.height) lizard.y = 0;
+            });
+
+            particles = particles.filter(p => p.update());
+        }
+
+        function draw() {
+            const theme = LEVELS[currentLevel].theme;
+            
+            if (theme === 'farm') {
+                const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                grad.addColorStop(0, '#81c784');
+                grad.addColorStop(1, '#66bb6a');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else if (theme === 'river') {
+                const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                grad.addColorStop(0, '#a5d6a7');
+                grad.addColorStop(1, '#81c784');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else {
+                const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                grad.addColorStop(0, '#ffe0b2');
+                grad.addColorStop(1, '#ffcc80');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            ctx.save();
+            ctx.translate(canvas.width/2, canvas.height/2);
+            ctx.scale(CAMERA.zoom, CAMERA.zoom);
+            ctx.translate(-CAMERA.x, -CAMERA.y);
+
+            if (theme === 'farm') {
+                // Clean farm background
+            } else if (theme === 'river') {
+                const riverY = WORLD.height / 2;
+                const riverWidth = 200;
+                ctx.fillStyle = '#29b6f6';
+                ctx.beginPath();
+                ctx.moveTo(0, riverY - riverWidth/2);
+                ctx.lineTo(WORLD.width, riverY - riverWidth/2 + 100);
+                ctx.lineTo(WORLD.width, riverY + riverWidth/2 + 100);
+                ctx.lineTo(0, riverY + riverWidth/2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                for (let i = 0; i < 5; i++) {
+                    const offset = (Date.now() * 0.001 + i * 100) % WORLD.width;
+                    ctx.beginPath();
+                    ctx.moveTo(offset, riverY - 50 + i * 20);
+                    ctx.lineTo(offset + 30, riverY - 40 + i * 20);
+                    ctx.lineTo(offset + 60, riverY - 50 + i * 20);
+                    ctx.stroke();
+                }
+            } else {
+                // Desert - clean background
+            }
+
+            mountains.forEach(mtn => drawMountain(mtn));
+            trees.forEach(tree => {
+                if (tree.type === 'cactus') drawCactus(tree);
+                else drawTree(tree);
+            });
+            cars.forEach(car => drawCar(car));
+            
+            // Draw farm animals for level 1
+            if (theme === 'farm') {
+                sheeps.forEach(sheep => drawSheep(sheep));
+                chickens.forEach(chicken => drawChicken(chicken));
+                birds.forEach(bird => drawBird(bird));
+            }
+            
+            lizards.forEach(lizard => drawLizard(lizard));
+
+            const allObjects = [
+                ...snacks.map(s => ({...s, type: 'snack'})),
+                ...tightSpaces.map(t => ({...t, type: 'tight'})),
+                {...afnan, type: 'afnan', isPlayer: true}
+            ].sort((a, b) => a.y - b.y);
+
+            allObjects.forEach(obj => {
+                if (obj.type === 'snack' && !obj.active) return;
+                drawObject(obj);
+            });
+
+            particles.forEach(p => p.draw(ctx));
+            ctx.restore();
+            drawMinimap();
+        }
+
+        function drawObject(obj) {
+            const screenX = obj.x - CAMERA.x + canvas.width/2;
+            const screenY = obj.y - CAMERA.y + canvas.height/2;
+            if (screenX < -150 || screenX > canvas.width + 150 || screenY < -150 || screenY > canvas.height + 150) return;
+
+            if (obj.type === 'snack') {
+                const float = Math.sin(obj.float) * 5;
+                const size = 50 * obj.scale;
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.beginPath();
+                ctx.ellipse(obj.x, obj.y + 15, size/2, 10, 0, 0, Math.PI*2);
+                ctx.fill();
+                ctx.save();
+                ctx.translate(obj.x, obj.y + float);
+                ctx.rotate(obj.rotation + Math.sin(obj.float * 0.5) * 0.1);
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = COLORS.pink;
+                ctx.font = `${size}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(obj.emoji, 0, 0);
+                ctx.restore();
+                ctx.shadowBlur = 0;
+                if (Math.random() > 0.95) {
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(obj.x + (Math.random()-0.5)*size, obj.y + (Math.random()-0.5)*size, 2, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            } else if (obj.type === 'tight') {
+                ctx.fillStyle = 'rgba(231, 76, 60, 0.15)';
+                ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+                ctx.strokeStyle = 'rgba(231, 76, 60, 0.4)';
+                ctx.setLineDash([10, 10]);
+                ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
+                ctx.setLineDash([]);
+            } else if (obj.type === 'afnan') {
+                drawCharacter(obj, true);
+            }
+        }
+
+        function drawCharacter(char, isPlayer) {
+            const isAfnan = isPlayer;
+            const bw = isAfnan ? char.bodyW : 30;
+            const bh = isAfnan ? char.bodyH : 50;
+            const aw = isAfnan ? char.assW : 35;
+            const ah = isAfnan ? char.assH : 30;
+            const legLen = isAfnan ? char.legLength : 40;
+            const shadowSize = isAfnan ? char.shadowScale : 1;
+
+            ctx.fillStyle = 'rgba(253, 121, 168, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(char.x, char.y + 10, (aw/2 + 10) * shadowSize, 10 * shadowSize, 0, 0, Math.PI*2);
+            ctx.fill();
+
+            if (isAfnan && char.stuck) {
+                ctx.save();
+                ctx.translate(char.x, char.y);
+                ctx.rotate(Math.sin(char.wiggle) * 0.1);
+                ctx.translate(-char.x, -char.y);
+            }
+
+            const walkOffset = isAfnan ? Math.sin(char.walkCycle) * 8 : 0;
+            ctx.fillStyle = '#f4d03f';
+            ctx.fillRect(char.x - bw/3 - 4, char.y - legLen/2 + walkOffset, 8, legLen);
+            ctx.fillStyle = '#e84393';
+            ctx.fillRect(char.x - bw/3 - 5, char.y + legLen/2 - 5 + walkOffset, 10, 6);
+            ctx.fillStyle = '#f4d03f';
+            ctx.fillRect(char.x + bw/3 - 4, char.y - legLen/2 - walkOffset, 8, legLen);
+            ctx.fillStyle = '#e84393';
+            ctx.fillRect(char.x + bw/3 - 5, char.y + legLen/2 - 5 - walkOffset, 10, 6);
+
+            if (isAfnan) {
+                const assGrad = ctx.createRadialGradient(char.x - aw/4, char.y - 10, 0, char.x, char.y, aw/2);
+                assGrad.addColorStop(0, COLORS.pink);
+                assGrad.addColorStop(0.5, COLORS.pinkDark);
+                assGrad.addColorStop(1, '#d63031');
+                ctx.fillStyle = assGrad;
+            } else {
+                ctx.fillStyle = isAfnan ? COLORS.pink : char.color;
+            }
+            ctx.beginPath();
+            ctx.ellipse(char.x, char.y - 5, aw/2, ah/2, 0, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.beginPath();
+            ctx.ellipse(char.x - aw/4, char.y - 10, aw/4, ah/4, 0, 0, Math.PI*2);
+            ctx.fill();
+
+            if (aw > 50 && isAfnan) {
+                ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, ah * 0.3);
+                ctx.quadraticCurveTo(3, 0, 0, ah * 0.5);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = COLORS.blue;
+            ctx.fillRect(char.x - bw/2, char.y - bh, bw, bh);
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.fillRect(char.x - bw/2 + 3, char.y - bh + 5, bw - 6, 3);
+            ctx.strokeStyle = '#f4d03f';
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            const armSwing = isAfnan ? Math.sin(char.walkCycle) * 10 : 0;
+            ctx.beginPath();
+            ctx.moveTo(char.x - bw/2 + 3, char.y - bh + 15);
+            ctx.lineTo(char.x - bw/2 - 10 + armSwing, char.y - bh/2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(char.x + bw/2 - 3, char.y - bh + 15);
+            ctx.lineTo(char.x + bw/2 + 10 - armSwing, char.y - bh/2);
+            ctx.stroke();
+
+            const headY = char.y - bh - 15;
+            ctx.fillStyle = '#f4d03f';
+            ctx.fillRect(char.x - 4, char.y - bh - 5, 8, 8);
+            ctx.fillStyle = '#f4d03f';
+            ctx.beginPath();
+            ctx.arc(char.x, headY, 15, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath();
+            ctx.arc(char.x, headY - 3, 17, Math.PI, 0, false);
+            ctx.fill();
+            ctx.fillRect(char.x - 17, headY - 5, 5, 15);
+            ctx.fillRect(char.x + 12, headY - 5, 5, 15);
+            ctx.fillStyle = '#2c3e50';
+            if (isAfnan && char.stuck) {
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(char.x - 7, headY - 3);
+                ctx.lineTo(char.x - 3, headY + 3);
+                ctx.moveTo(char.x - 3, headY - 3);
+                ctx.lineTo(char.x - 7, headY + 3);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(char.x + 3, headY - 3);
+                ctx.lineTo(char.x + 7, headY + 3);
+                ctx.moveTo(char.x + 7, headY - 3);
+                ctx.lineTo(char.x + 3, headY + 3);
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.arc(char.x - 4, headY, 3, 0, Math.PI*2);
+                ctx.arc(char.x + 4, headY, 3, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(char.x - 3, headY - 1, 1.5, 0, Math.PI*2);
+                ctx.arc(char.x + 5, headY - 1, 1.5, 0, Math.PI*2);
+                ctx.fill();
+            }
+            ctx.beginPath();
+            if (isAfnan && char.stuck) {
+                for (let i = 0; i < 3; i++) {
+                    ctx.fillRect(char.x - 4 + i * 3, headY + 6 + Math.sin(i + char.wiggle), 2, 2);
+                }
+            } else {
+                ctx.arc(char.x, headY + 6, 3, 0, Math.PI, false);
+            }
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
+            ctx.beginPath();
+            ctx.arc(char.x - 9, headY + 2, 3, 0, Math.PI*2);
+            ctx.arc(char.x + 9, headY + 2, 3, 0, Math.PI*2);
+            ctx.fill();
+            if (isAfnan && char.stuck) {
+                ctx.fillStyle = '#74b9ff';
+                ctx.beginPath();
+                ctx.arc(char.x - 12, headY - 8, 3, 0, Math.PI*2);
+                ctx.arc(char.x + 11, headY - 5, 2.5, 0, Math.PI*2);
+                ctx.fill();
+            }
+            if (isAfnan && char.stuck) ctx.restore();
+
+            // Name tag with NO background - just text with shadow for visibility
+            if (isAfnan) {
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Draw text shadow for visibility
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillText('افنان', char.x + 1, headY - 45 + 1);
+                
+                // Draw main text
+                ctx.fillStyle = '#fff';
+                ctx.fillText('افنان', char.x, headY - 45);
+                
+                // Small pink indicator line
+                ctx.fillStyle = COLORS.pink;
+                ctx.fillRect(char.x - 15, headY - 38, 30, 2);
+            }
+        }
+
+        function drawMinimap() {
+            const mm = minimapCtx;
+            const w = minimapCanvas.width;
+            const h = minimapCanvas.height;
+            const scale = w / WORLD.width;
+            const theme = LEVELS[currentLevel].theme;
+            
+            if (theme === 'farm') mm.fillStyle = '#81c784';
+            else if (theme === 'river') mm.fillStyle = '#a5d6a7';
+            else mm.fillStyle = '#ffe0b2';
+            mm.fillRect(0, 0, w, h);
+
+            if (theme === 'river') {
+                mm.fillStyle = '#29b6f6';
+                mm.beginPath();
+                mm.moveTo(0, h/2 - 10);
+                mm.lineTo(w, h/2 - 5);
+                mm.lineTo(w, h/2 + 5);
+                mm.lineTo(0, h/2 + 10);
+                mm.closePath();
+                mm.fill();
+            }
+
+            mm.fillStyle = '#2e7d32';
+            trees.forEach(tree => {
+                mm.beginPath();
+                mm.arc(tree.x * scale, tree.y * scale, 3 * (tree.scale || 1), 0, Math.PI*2);
+                mm.fill();
+            });
+
+            mm.fillStyle = '#e84393';
+            snacks.forEach(snack => {
+                if (!snack.active) return;
+                mm.beginPath();
+                mm.arc(snack.x * scale, snack.y * scale, 3, 0, Math.PI*2);
+                mm.fill();
+            });
+
+            const ax = afnan.x * scale;
+            const ay = afnan.y * scale;
+            mm.fillStyle = 'rgba(253, 121, 168, 0.3)';
+            mm.beginPath();
+            mm.arc(ax, ay, 30, afnan.facing - 0.5, afnan.facing + 0.5);
+            mm.closePath();
+            mm.fill();
+            mm.fillStyle = COLORS.pink;
+            mm.beginPath();
+            mm.arc(ax, ay, 6, 0, Math.PI*2);
+            mm.fill();
+            mm.strokeStyle = '#fff';
+            mm.lineWidth = 2;
+            mm.stroke();
+            mm.fillStyle = '#fff';
+            mm.beginPath();
+            mm.arc(ax + Math.cos(afnan.facing) * 10, ay + Math.sin(afnan.facing) * 10, 3, 0, Math.PI*2);
+            mm.fill();
+        }
+
+        function gameLoop() {
+            if (gameState === 'playing') {
+                update();
+                draw();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+    </script>
+</body>
+</html>
