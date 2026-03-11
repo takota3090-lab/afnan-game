@@ -1565,15 +1565,26 @@
                 const float = Math.sin(obj.float) * 4;
                 const size = 45 * obj.scale;
                 
-                ctx.fillStyle = 'rgba(0,0,0,0.15)';
+                // Draw darker, more visible shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
                 ctx.beginPath();
-                ctx.ellipse(obj.x, obj.y + 12, size/2, 8, 0, 0, Math.PI*2);
+                ctx.ellipse(obj.x, obj.y + 15, size/2, 10, 0, 0, Math.PI*2);
                 ctx.fill();
                 
+                // Draw white background circle behind emoji for better visibility
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                ctx.beginPath();
+                ctx.arc(obj.x, obj.y + float, size/1.8, 0, Math.PI*2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw emoji with better visibility
                 ctx.save();
                 ctx.translate(obj.x, obj.y + float);
                 ctx.rotate(obj.rotation + Math.sin(obj.float * 0.5) * 0.1);
-                ctx.font = `${size}px Arial`;
+                ctx.font = `bold ${size}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(obj.emoji, 0, 0);
